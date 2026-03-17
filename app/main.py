@@ -23,11 +23,8 @@ _client: Optional[VSphereClient] = None
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global _client
-    config = load_config()
     store = CredentialStore()
-    saved = store.load_credentials()
-    if saved:
-        config.vsphere.user, config.vsphere.password = saved
+    config = load_config(store=store)
 
     _client = VSphereClient(config)
     try:

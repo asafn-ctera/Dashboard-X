@@ -1,6 +1,9 @@
-# Credentials
+# Credentials & secrets
 config.yaml
 .jenkins-config
+.dashboard-x/
+*.key
+*.enc
 
 # Python
 __pycache__/

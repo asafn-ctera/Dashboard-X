@@ -20,7 +20,7 @@
 
         <div class="envs-section">
             <div class="toolbar">
-                <input type="text" id="search" class="search-input" placeholder="Filter VMs by name, IP, version...">
+                <input type="text" id="search" class="search-input" placeholder="Filter VMs by name, IP, version..." autocomplete="off">
                 <div class="folder-tabs" id="folder-tabs"></div>
                 <div class="toolbar-right">
                     <label class="auto-refresh-toggle">
@@ -196,11 +196,11 @@
             <p id="login-dialog-text">Please enter your vSphere credentials.</p>
             <div class="form-group">
                 <label for="login-username">Username</label>
-                <input type="text" id="login-username" class="panel-input" placeholder="user@company.com">
+                <input type="text" id="login-username" class="panel-input" placeholder="user@company.com" autocomplete="username">
             </div>
             <div class="form-group">
                 <label for="login-password">Password</label>
-                <input type="password" id="login-password" class="panel-input" placeholder="Password">
+                <input type="password" id="login-password" class="panel-input" placeholder="Password" autocomplete="current-password">
             </div>
             <div id="login-status" class="action-status"></div>
             <div class="dialog-actions">

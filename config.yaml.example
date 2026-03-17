@@ -1,7 +1,21 @@
+# =============================================================================
+# Dashboard-X configuration
+# =============================================================================
+# Copy this file to config.yaml and fill in non-secret settings.
+#
+# SECRETS (passwords, tokens) should NOT be placed here.
+# They are stored in an encrypted file at ~/.dashboard-x/credentials.enc
+# (Fernet AES-128-CBC, key at ~/.dashboard-x/secret.key, both chmod 600).
+#
+# On first login via the web UI the credentials are saved automatically.
+# If config.yaml still contains a plaintext password or token, the app will
+# auto-migrate it to the encrypted store and scrub it from this file.
+# =============================================================================
+
 vsphere:
   server: "vc.ctera.local"
-  user: ""
-  password: ""
+  user: ""            # username only – password managed via encrypted store
+  password: ""        # leave empty; use the web UI login or credential store
   allow_unverified_ssl: true
 
 folders:
@@ -17,3 +31,12 @@ clone:
   template_folder: "CTERA/DevProd/QA/Portal_Templates"
   reference_vm_path: "Technical Teams/Engineering/AsafN/Thanks_Niv-O_8.2"
   target_folder: "Technical Teams/Engineering/Portal Sandbox/AsafN"
+
+# Jenkins credentials are also managed via the encrypted store.
+# You can bootstrap them from ~/.jenkins-config (auto-migrated on first run).
+# jenkins:
+#   url: "https://jenkins.ctera.dev"
+#   user: ""          # leave empty
+#   token: ""         # leave empty
+#   jobs:
+#     - "build_and_deploy_private_portal"
