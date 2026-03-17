@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ctera-Dashboard-X</title>
+    <link rel="stylesheet" href="/css/style.css?v=2">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Ctera-Dashboard-X</h1>
+            <div class="connection-status">
+                <span class="status-dot" id="status-dot"></span>
+                <span id="status-text">Connecting...</span>
+            </div>
+        </header>
+
+        <div id="error-banner" class="error-banner"></div>
+
+        <div class="envs-section">
+            <div class="toolbar">
+                <input type="text" id="search" class="search-input" placeholder="Filter VMs by name, IP, version...">
+                <div class="folder-tabs" id="folder-tabs"></div>
+                <div class="toolbar-right">
+                    <label class="auto-refresh-toggle">
+                        <input type="checkbox" id="auto-refresh" checked>
+                        Auto-refresh
+                    </label>
+                    <button class="btn btn-secondary" onclick="refreshVMs()">Refresh</button>
+                </div>
+            </div>
+
+            <div id="loading-overlay" class="loading-overlay">
+                <span class="spinner"></span>
+                Loading VMs...
+            </div>
+
+            <div class="table-wrapper" id="vm-table">
+                <table>
+                    <thead>
+                        <tr>
+                            <th data-col="name" onclick="sortBy('name')">Name <span class="sort-arrow"></span></th>
+                            <th data-col="folder" onclick="sortBy('folder')">Folder <span class="sort-arrow"></span></th>
+                            <th data-col="creation_date" onclick="sortBy('creation_date')">Created <span class="sort-arrow"></span></th>
+                            <th data-col="ip_address" onclick="sortBy('ip_address')">IP / Connect <span class="sort-arrow"></span></th>
+                            <th data-col="status" onclick="sortBy('status')">Status <span class="sort-arrow"></span></th>
+                        </tr>
+                    </thead>
+                    <tbody id="vm-tbody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="bottom-layout">
+            <div class="jenkins-build-row">
+                <div class="jenkins-half jenkins-deploy">
+                    <div class="jenkins-header">
+                        <h2>Jenkins Jobs</h2>
+                        <button class="btn btn-small btn-primary" onclick="openAddJenkinsJobDialog()">+ Add Job</button>
+                        <img class="jenkins-logo" src="/img/jenkins.png" alt="Jenkins">
+                    </div>
+                    <div class="jenkins-jobs-list" id="jenkins-jobs-list"></div>
+                    <div id="jenkins-build-status" class="action-status"></div>
+                </div>
+            </div>
+
+            <div class="right-panel" id="right-panel">
+                <div class="panel-card">
+                    <h2>Suggestions</h2>
+                    <div class="suggestion-box" id="suggestion-box" style="display:none;">
+                        <div class="suggestion-title" id="suggestion-title"></div>
+                        <div class="suggestion-text" id="suggestion-text"></div>
+                        <div class="suggestion-meta" id="suggestion-meta"></div>
+                        <div class="suggestion-names" id="suggestion-names"></div>
+                        <button class="btn btn-danger btn-full" id="suggestion-delete-btn" onclick="deleteSuggestedEnvs()">
+                            Delete Suggested Envs
+                        </button>
+                    </div>
+
+                    <div class="no-suggestion" id="no-suggestion">
+                        No optimization suggestions right now.
+                    </div>
+                </div>
+
+                <div class="panel-card">
+                    <h2>Create VM from Template</h2>
+                    <button class="btn btn-primary btn-full" onclick="openCloneDialog()">
+                        Create VM
+                    </button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Snapshot confirmation dialog -->
+    <div class="dialog-overlay" id="snapshot-dialog">
+        <div class="dialog-box">
+            <h3>Create Snapshot</h3>
+            <p id="snapshot-dialog-text"></p>
+            <p class="snapshot-name-preview" id="snapshot-name-preview"></p>
+            <div class="dialog-actions">
+                <button class="btn btn-secondary" onclick="closeSnapshotDialog()">Cancel</button>
+                <button class="btn btn-primary" id="snapshot-confirm-btn" onclick="confirmSnapshot()">Create Snapshot</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Restore snapshot dialog -->
+    <div class="dialog-overlay" id="restore-dialog">
+        <div class="dialog-box">
+            <h3>Restore Snapshot</h3>
+            <p id="restore-dialog-text"></p>
+            <div class="form-group">
+                <label for="restore-snapshot-select">Snapshot</label>
+                <select id="restore-snapshot-select" class="panel-select">
+                    <option value="">Loading snapshots...</option>
+                </select>
+            </div>
+            <div class="dialog-actions">
+                <button class="btn btn-secondary" onclick="closeRestoreDialog()">Cancel</button>
+                <button class="btn btn-primary" id="restore-confirm-btn" onclick="confirmRestoreSnapshot()">Restore</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Action confirmation dialog (stop / restart / delete) -->
+    <div class="dialog-overlay" id="action-dialog">
+        <div class="dialog-box">
+            <h3 id="action-dialog-title"></h3>
+            <p id="action-dialog-text"></p>
+            <div class="dialog-actions">
+                <button class="btn btn-secondary" onclick="closeActionDialog()">Cancel</button>
+                <button class="btn btn-primary" id="action-confirm-btn" onclick="confirmAction()"></button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Jenkins parameters dialog -->
+    <div class="dialog-overlay" id="jenkins-params-dialog">
+        <div class="dialog-box jenkins-params-dialog-box">
+            <h3>Build with Parameters</h3>
+            <p class="jenkins-params-subtitle" id="jenkins-params-subtitle"></p>
+            <div id="jenkins-params-loading" class="jenkins-params-loading">
+                <span class="spinner"></span> Loading parameters...
+            </div>
+            <div id="jenkins-params-form" class="jenkins-params-form"></div>
+            <div id="jenkins-params-status" class="action-status"></div>
+            <div class="dialog-actions">
+                <button class="btn btn-secondary" onclick="closeJenkinsParamsDialog()">Cancel</button>
+                <button class="btn btn-primary" id="jenkins-params-submit" onclick="submitJenkinsBuild()" disabled>Build</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Jenkins job dialog -->
+    <div class="dialog-overlay" id="add-jenkins-job-dialog">
+        <div class="dialog-box add-jenkins-job-dialog-box">
+            <h3>Add Jenkins Job</h3>
+            <div class="form-group">
+                <label for="jenkins-job-search-input">Search Jobs</label>
+                <input type="text" id="jenkins-job-search-input" class="panel-input"
+                       placeholder="Type to search Jenkins jobs..."
+                       oninput="debounceJenkinsJobSearch()">
+            </div>
+            <div class="jenkins-job-search-results" id="jenkins-job-search-results">
+                <p class="search-hint">Type to search or browse available Jenkins jobs</p>
+            </div>
+            <div id="add-jenkins-job-status" class="action-status"></div>
+            <div class="dialog-actions">
+                <button class="btn btn-secondary" onclick="closeAddJenkinsJobDialog()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add environment dialog -->
+    <div class="dialog-overlay" id="add-env-dialog">
+        <div class="dialog-box add-env-dialog-box">
+            <h3>Add vSphere Environment</h3>
+            <div class="browse-breadcrumb" id="browse-breadcrumb"></div>
+            <div class="browse-list" id="browse-list">
+                <div class="browse-loading"><span class="spinner"></span> Loading...</div>
+            </div>
+            <div id="add-env-status" class="action-status"></div>
+            <div class="dialog-actions">
+                <button class="btn btn-secondary" onclick="closeAddEnvDialog()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- vSphere login dialog -->
+    <div class="dialog-overlay" id="login-dialog">
+        <div class="dialog-box login-dialog-box">
+            <h3>Connect to vSphere</h3>
+            <p id="login-dialog-text">Please enter your vSphere credentials.</p>
+            <div class="form-group">
+                <label for="login-username">Username</label>
+                <input type="text" id="login-username" class="panel-input" placeholder="user@company.com">
+            </div>
+            <div class="form-group">
+                <label for="login-password">Password</label>
+                <input type="password" id="login-password" class="panel-input" placeholder="Password">
+            </div>
+            <div id="login-status" class="action-status"></div>
+            <div class="dialog-actions">
+                <button class="btn btn-primary" id="login-confirm-btn" onclick="submitLogin()">Connect</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Clone VM from template dialog -->
+    <div class="dialog-overlay" id="clone-dialog">
+        <div class="dialog-box clone-dialog-box">
+            <!-- Step 1: pick template -->
+            <div id="clone-step-1">
+                <h3>Select a Template</h3>
+                <input type="text" id="clone-template-search" class="panel-input"
+                       placeholder="Filter by version..." oninput="filterCloneTemplates()">
+                <div class="clone-template-list" id="clone-template-list"></div>
+            </div>
+            <!-- Step 2: enter name -->
+            <div id="clone-step-2" style="display:none;">
+                <h3>Name Your VM</h3>
+                <p class="clone-selected-tpl">Template: <strong id="clone-selected-label"></strong></p>
+                <div class="form-group">
+                    <label for="clone-vm-name">VM Name</label>
+                    <input type="text" id="clone-vm-name" class="panel-input" placeholder="e.g. AsafN_MyPortal">
+                </div>
+                <div class="clone-info">
+                    Uses network, datastore, and resource pool from reference VM.
+                    Clone target: Portal Sandbox/AsafN
+                </div>
+                <div id="clone-status" class="action-status"></div>
+            </div>
+            <div class="dialog-actions">
+                <button class="btn btn-secondary" onclick="closeCloneDialog()">Cancel</button>
+                <button class="btn btn-secondary" id="clone-back-btn" onclick="cloneStepBack()" style="display:none;">Back</button>
+                <button class="btn btn-primary" id="clone-next-btn" onclick="cloneVM()" style="display:none;">Create VM</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/js/app.js?v=2"></script>
+</body>
+</html>

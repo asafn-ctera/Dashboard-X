@@ -1,0 +1,12 @@
+# Jenkins Configuration
+# Copy this file to ~/.jenkins-config and fill in your credentials
+#
+# To get your API token:
+#   1. Go to https://jenkins.ctera.dev/me/configure
+#   2. Click 'Add new Token' under API Token section
+#   3. Give it a name and click Generate
+#   4. Copy the token (you won't see it again!)
+
+JENKINS_URL="https://jenkins.ctera.dev"
+JENKINS_USER="your-username"
+JENKINS_TOKEN="your-api-token"

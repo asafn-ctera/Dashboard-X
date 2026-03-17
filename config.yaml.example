@@ -1,0 +1,19 @@
+vsphere:
+  server: "vc.ctera.local"
+  user: ""
+  password: ""
+  allow_unverified_ssl: true
+
+folders:
+  - "Technical Teams/Engineering/AsafN"
+  - "Technical Teams/Engineering/Portal Sandbox/AsafN"
+
+dashboard:
+  port: 8585
+  cache_ttl_seconds: 60
+  connect_url_scheme: "https"
+
+clone:
+  template_folder: "CTERA/DevProd/QA/Portal_Templates"
+  reference_vm_path: "Technical Teams/Engineering/AsafN/Thanks_Niv-O_8.2"
+  target_folder: "Technical Teams/Engineering/Portal Sandbox/AsafN"

@@ -1,0 +1,12 @@
+services:
+  dashboard-x:
+    build: .
+    container_name: dashboard-x
+    ports:
+      - "8585:8585"
+    environment:
+      - VSPHERE_DASH_DATA_DIR=/data
+    volumes:
+      - ./config.yaml:/app/config.yaml:ro
+      - ./.dashboard-x-data:/data
+    restart: unless-stopped
