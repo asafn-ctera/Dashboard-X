@@ -527,7 +527,11 @@ class VSphereClient:
 
         ref_vm = self._find_reference_vm(content)
         if ref_vm is None:
-            return False, f"Reference VM not found at '{self._config.clone.reference_vm_path}'"
+            return False, (
+                f"Reference VM not found at '{self._config.clone.reference_vm_path}' "
+                f"and no fallback VM exists in monitored folders. "
+                f"Update 'clone.reference_vm_path' in config.yaml to point to an existing VM."
+            )
 
         target_folder = self._navigate_to_folder(
             content.rootFolder, self._config.clone.target_folder
@@ -549,8 +553,6 @@ class VSphereClient:
             task = template.Clone(folder=target_folder, name=vm_name, spec=clone_spec)
             self._wait_for_task(task)
 
-            # Reconfigure network to match reference VM, then power on.
-            # Failures here should not mark clone creation itself as failed.
             cloned_vm = self._wait_for_vm_in_folder(target_folder, vm_name)
             warnings: List[str] = []
             if cloned_vm is None:
@@ -606,15 +608,31 @@ class VSphereClient:
     def _find_reference_vm(self, content: Any) -> Optional[vim.VirtualMachine]:
         ref_path = self._config.clone.reference_vm_path
         parts = ref_path.rsplit("/", 1)
-        if len(parts) != 2:
-            return None
-        folder_path, vm_name = parts
-        folder = self._navigate_to_folder(content.rootFolder, folder_path)
-        if folder is None:
-            return None
-        for entity in folder.childEntity:
-            if isinstance(entity, vim.VirtualMachine) and entity.name == vm_name:
-                return entity
+        if len(parts) == 2:
+            folder_path, vm_name = parts
+            folder = self._navigate_to_folder(content.rootFolder, folder_path)
+            if folder is not None:
+                for entity in folder.childEntity:
+                    if isinstance(entity, vim.VirtualMachine) and entity.name == vm_name:
+                        return entity
+            logger.warning(
+                "Configured reference VM '%s' not found, searching for fallback in monitored folders",
+                ref_path,
+            )
+
+        for folder_path in self._config.folders:
+            folder = self._navigate_to_folder(content.rootFolder, folder_path)
+            if folder is None:
+                continue
+            for entity in folder.childEntity:
+                if (
+                    isinstance(entity, vim.VirtualMachine)
+                    and not entity.config.template
+                    and entity.resourcePool is not None
+                ):
+                    logger.info("Using fallback reference VM: '%s' from '%s'", entity.name, folder_path)
+                    return entity
+
         return None
 
     def _build_relocate_spec(self, ref_vm: vim.VirtualMachine) -> vim.vm.RelocateSpec:
@@ -674,7 +692,11 @@ class VSphereClient:
 
         ref_vm = self._find_reference_vm(content)
         if ref_vm is None:
-            return False, f"Reference VM not found at '{self._config.clone.reference_vm_path}'"
+            return False, (
+                f"Reference VM not found at '{self._config.clone.reference_vm_path}' "
+                f"and no fallback VM exists in monitored folders. "
+                f"Update 'clone.reference_vm_path' in config.yaml to point to an existing VM."
+            )
 
         target_folder = self._navigate_to_folder(
             content.rootFolder, self._config.clone.target_folder

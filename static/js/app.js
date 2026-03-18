@@ -27,7 +27,7 @@ const CLONE_TEMPLATE_LIMIT = 5;
 
 document.addEventListener('DOMContentLoaded', () => {
     loadStatus().finally(() => {
-        loadVMs();
+        autoAddUserFolders().finally(() => loadVMs());
     });
     loadTemplates();
     loadJenkinsJobs().then(() => loadJenkinsBuilds());
@@ -78,6 +78,51 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 
+// -- auto-add user folders --------------------------------------------
+
+async function autoAddUserFolders() {
+    if (!authConnected) return;
+    const prefix = getUserPrefix();
+    if (!prefix) return;
+
+    const candidatePaths = [
+        `Technical Teams/Engineering/${prefix}`,
+        `Technical Teams/Engineering/Portal Sandbox/${prefix}`,
+    ];
+
+    let res, data;
+    try {
+        res = await fetch(`${API}/api/config/folders`);
+        data = await res.json();
+    } catch { return; }
+    const existing = new Set(data.folders || []);
+
+    for (const candidate of candidatePaths) {
+        const match = existing.has(candidate) ? candidate
+            : [...existing].find(f => f.toLowerCase() === candidate.toLowerCase());
+        if (match) continue;
+
+        try {
+            const parent = candidate.substring(0, candidate.lastIndexOf('/'));
+            const folderName = candidate.substring(candidate.lastIndexOf('/') + 1);
+            const browseRes = await fetch(`${API}/api/vsphere/browse?path=${encodeURIComponent(parent)}`);
+            const browseData = await browseRes.json();
+            if (!browseData.success || !Array.isArray(browseData.items)) continue;
+            const found = browseData.items.find(
+                i => i.type === 'folder' && i.name.toLowerCase() === folderName.toLowerCase()
+            );
+            if (!found) continue;
+
+            await fetch(`${API}/api/config/folders`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ folder: found.path }),
+            });
+            activeFolders.add(found.path);
+        } catch { /* ignore */ }
+    }
+}
+
 // -- data fetching ----------------------------------------------------
 
 async function loadStatus() {
@@ -118,7 +163,6 @@ async function loadVMs(force = false) {
         }
         const params = [];
         if (force) params.push('refresh=true');
-        if (currentUserEmail) params.push(`owner_email=${encodeURIComponent(currentUserEmail)}`);
         const url = `${API}/api/vms${params.length ? `?${params.join('&')}` : ''}`;
         const res = await fetch(url);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -902,8 +946,79 @@ async function openAddEnvDialog() {
     }
     document.getElementById('add-env-status').textContent = '';
     document.getElementById('add-env-status').className = 'action-status';
+    document.getElementById('quick-add-section').innerHTML = '';
     document.getElementById('add-env-dialog').classList.add('active');
     browseTo('');
+    loadQuickAddSuggestions();
+}
+
+async function loadQuickAddSuggestions() {
+    const prefix = getUserPrefix();
+    if (!prefix) return;
+
+    const parentPaths = [
+        'Technical Teams/Engineering',
+        'Technical Teams/Engineering/Portal Sandbox',
+    ];
+
+    const found = [];
+    await Promise.all(parentPaths.map(async (parent) => {
+        try {
+            const res = await fetch(`${API}/api/vsphere/browse?path=${encodeURIComponent(parent)}`);
+            const data = await res.json();
+            if (!data.success || !Array.isArray(data.items)) return;
+            for (const item of data.items) {
+                if (item.type === 'folder' && item.name.toLowerCase() === prefix) {
+                    found.push(item);
+                }
+            }
+        } catch { /* ignore */ }
+    }));
+
+    const suggestions = found.filter(f => !configuredFolderSet.has(f.path));
+    if (suggestions.length === 0) return;
+
+    const container = document.getElementById('quick-add-section');
+    container.innerHTML = `<div class="quick-add-box">
+        <div class="quick-add-label">Your environments</div>
+        ${suggestions.map(f => {
+            const p = escAttr(f.path);
+            const vmLabel = f.vm_count === 1 ? '1 VM' : `${f.vm_count} VMs`;
+            return `<div class="quick-add-item">
+                <span class="quick-add-path">${esc(f.path)}</span>
+                ${f.vm_count > 0 ? `<span class="browse-vm-count">${vmLabel}</span>` : ''}
+                <button class="btn btn-small btn-primary" onclick="quickAddFolder('${p}', this)">+ Add</button>
+            </div>`;
+        }).join('')}
+    </div>`;
+}
+
+async function quickAddFolder(folder, btn) {
+    btn.disabled = true;
+    btn.textContent = 'Adding...';
+    try {
+        const res = await fetch(`${API}/api/config/folders`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ folder }),
+        });
+        const data = await res.json();
+        if (data.success) {
+            configuredFolderSet.add(folder);
+            activeFolders.add(folder);
+            btn.textContent = 'Added';
+            btn.className = 'btn btn-small btn-secondary';
+            loadVMs(true);
+        } else {
+            btn.textContent = '+ Add';
+            btn.disabled = false;
+            showToast(data.message || 'Failed to add', 'error');
+        }
+    } catch (e) {
+        btn.textContent = '+ Add';
+        btn.disabled = false;
+        showToast(`Failed: ${e.message}`, 'error');
+    }
 }
 
 function closeAddEnvDialog() {
@@ -922,7 +1037,7 @@ async function browseTo(path) {
             list.innerHTML = `<div class="browse-empty">${esc(data.message || 'Failed to load')}</div>`;
             return;
         }
-        renderBrowseList(data.items);
+        renderBrowseList(data.items.filter(i => !i.name.startsWith('_')));
     } catch (e) {
         list.innerHTML = `<div class="browse-empty">Failed: ${esc(e.message)}</div>`;
     }
@@ -1049,49 +1164,63 @@ function isStoppedStatus(status) {
     return s === 'poweredoff' || s === 'off' || s === 'stopped' || s === 'suspended';
 }
 
+let allSuggestions = [];
+
 function renderEnvControlPanel(vms) {
-    renderSuggestion(vms);
+    renderSuggestions(vms);
 }
 
-function renderSuggestion(vms) {
-    const suggestionBox = document.getElementById('suggestion-box');
+function renderSuggestions(vms) {
+    const container = document.getElementById('suggestions-list');
     const noSuggestion = document.getElementById('no-suggestion');
-    const title = document.getElementById('suggestion-title');
-    const text = document.getElementById('suggestion-text');
-    const meta = document.getElementById('suggestion-meta');
-    const names = document.getElementById('suggestion-names');
 
-    const suggestion = pickSuggestion(vms);
-    if (!suggestion) {
+    const prefix = getUserPrefix();
+    const userVMs = prefix
+        ? vms.filter(v => `${v.name} ${v.folder}`.toLowerCase().includes(prefix))
+        : vms;
+    allSuggestions = pickSuggestions(userVMs);
+    if (allSuggestions.length === 0) {
         currentSuggestionVMs = [];
-        suggestionBox.style.display = 'none';
+        container.innerHTML = '';
         noSuggestion.style.display = 'block';
         return;
     }
 
-    currentSuggestionVMs = suggestion.vms;
-    title.textContent = suggestion.title;
-    text.textContent = suggestion.text;
-    meta.textContent = `${suggestion.vms.length} environment(s) found`;
-    names.textContent = summarizeEnvNames(suggestion.vms);
-    suggestionBox.style.display = 'block';
     noSuggestion.style.display = 'none';
+    container.innerHTML = allSuggestions.map((s, idx) =>
+        `<div class="suggestion-box">
+            <div class="suggestion-title">${esc(s.title)}</div>
+            <div class="suggestion-meta">${s.vms.length} environment(s) found</div>
+            <div class="suggestion-names">${esc(summarizeEnvNames(s.vms))}</div>
+            <button class="btn btn-danger btn-full" onclick="deleteSuggestionEnvs(${idx})">
+                Delete
+            </button>
+        </div>`
+    ).join('');
 }
 
-function pickSuggestion(vms) {
+function pickSuggestions(vms) {
+    const suggestions = [];
     const now = Date.now();
     const dayMs = 24 * 60 * 60 * 1000;
+
     const oldStopped = vms.filter((v) => {
         const created = toTime(v.creation_date);
         return created > 0 && now - created > (3 * dayMs) && isStoppedStatus(v.status);
     });
     if (oldStopped.length > 0) {
-        return {
-            key: 'old-stopped',
-            title: 'Suggestion: delete old envs save company money.',
-            text: 'Stopped environments older than 3 days were found. Consider deleting them.',
+        suggestions.push({
+            title: 'Suggestion: delete stopped environments older than 3 days.',
             vms: oldStopped,
-        };
+        });
+    }
+
+    const notRunning = vms.filter((v) => !isRunningStatus(v.status) && v.status !== 'provisioning');
+    if (notRunning.length > 0) {
+        suggestions.push({
+            title: 'Suggestion: delete non-running environments.',
+            vms: notRunning,
+        });
     }
 
     const veryOld = vms.filter((v) => {
@@ -1099,15 +1228,13 @@ function pickSuggestion(vms) {
         return created > 0 && now - created > (30 * dayMs);
     });
     if (veryOld.length > 0) {
-        return {
-            key: 'very-old',
-            title: 'Suggestion: remove old envs.',
-            text: 'Environments older than 1 month were found, regardless of status.',
+        suggestions.push({
+            title: 'Suggestion: remove environments older than 1 month.',
             vms: veryOld,
-        };
+        });
     }
 
-    return null;
+    return suggestions;
 }
 
 function summarizeEnvNames(vms) {
@@ -1132,19 +1259,19 @@ function templateMetaLine(tpl) {
     return parts.join(' · ');
 }
 
-async function deleteSuggestedEnvs() {
-    if (currentSuggestionVMs.length === 0) return;
-    const ok = window.confirm(`Delete ${currentSuggestionVMs.length} suggested environment(s)?`);
+async function deleteSuggestionEnvs(idx) {
+    const suggestion = allSuggestions[idx];
+    if (!suggestion || suggestion.vms.length === 0) return;
+    const ok = window.confirm(`Delete ${suggestion.vms.length} suggested environment(s)?`);
     if (!ok) return;
 
-    const btn = document.getElementById('suggestion-delete-btn');
-    const original = btn.textContent;
-    btn.disabled = true;
-    btn.textContent = 'Deleting...';
+    const buttons = document.querySelectorAll('#suggestions-list .btn-danger');
+    const btn = buttons[idx];
+    if (btn) { btn.disabled = true; btn.textContent = 'Deleting...'; }
 
     let success = 0;
     let failed = 0;
-    for (const vm of currentSuggestionVMs) {
+    for (const vm of suggestion.vms) {
         try {
             const res = await fetch(`${API}/api/delete`, {
                 method: 'POST',
@@ -1159,9 +1286,8 @@ async function deleteSuggestedEnvs() {
         }
     }
 
-    btn.disabled = false;
-    btn.textContent = original;
-    showToast(`Delete suggestion finished: ${success} deleted, ${failed} failed`, failed ? 'error' : 'success');
+    if (btn) { btn.disabled = false; btn.textContent = 'Delete'; }
+    showToast(`Delete finished: ${success} deleted, ${failed} failed`, failed ? 'error' : 'success');
     loadVMs(true);
 }
 

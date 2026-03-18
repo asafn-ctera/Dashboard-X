@@ -80,16 +80,7 @@
             <div class="right-panel" id="right-panel">
                 <div class="panel-card">
                     <h2>Suggestions</h2>
-                    <div class="suggestion-box" id="suggestion-box" style="display:none;">
-                        <div class="suggestion-title" id="suggestion-title"></div>
-                        <div class="suggestion-text" id="suggestion-text"></div>
-                        <div class="suggestion-meta" id="suggestion-meta"></div>
-                        <div class="suggestion-names" id="suggestion-names"></div>
-                        <button class="btn btn-danger btn-full" id="suggestion-delete-btn" onclick="deleteSuggestedEnvs()">
-                            Delete Suggested Envs
-                        </button>
-                    </div>
-
+                    <div id="suggestions-list"></div>
                     <div class="no-suggestion" id="no-suggestion">
                         No optimization suggestions right now.
                     </div>
@@ -190,6 +181,7 @@
     <div class="dialog-overlay" id="add-env-dialog">
         <div class="dialog-box add-env-dialog-box">
             <h3>Add vSphere Environment</h3>
+            <div id="quick-add-section"></div>
             <div class="browse-breadcrumb" id="browse-breadcrumb"></div>
             <div class="browse-list" id="browse-list">
                 <div class="browse-loading"><span class="spinner"></span> Loading...</div>
