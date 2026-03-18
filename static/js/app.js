@@ -669,9 +669,9 @@ function showToast(message, type) {
     toast.style.cssText = `
         position: fixed; bottom: 24px; right: 24px; padding: 14px 22px;
         border-radius: 10px; font-size: 0.88rem; z-index: 200;
-        background: ${type === 'success' ? 'rgba(102,212,200,0.12)' : 'rgba(224,107,107,0.12)'};
-        color: ${type === 'success' ? '#66d4c8' : '#e06b6b'};
-        border: 1px solid ${type === 'success' ? 'rgba(102,212,200,0.25)' : 'rgba(224,107,107,0.25)'};
+        background: ${type === 'success' ? 'rgba(117,228,214,0.12)' : 'rgba(240,123,123,0.12)'};
+        color: ${type === 'success' ? '#75e4d6' : '#f07b7b'};
+        border: 1px solid ${type === 'success' ? 'rgba(117,228,214,0.25)' : 'rgba(240,123,123,0.25)'};
         backdrop-filter: blur(12px); max-width: 400px;
         animation: fadeIn 0.2s ease-out;
     `;
