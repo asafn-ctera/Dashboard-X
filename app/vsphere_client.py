@@ -481,7 +481,7 @@ class VSphereClient:
 
     # -- templates ---------------------------------------------------------
 
-    def list_templates(self) -> List[TemplateInfo]:
+    def list_templates(self, limit: int = 10) -> List[TemplateInfo]:
         self._ensure_connected()
         content = self._si.RetrieveContent()
         template_folder_path = self._config.clone.template_folder
@@ -493,8 +493,25 @@ class VSphereClient:
         templates: List[TemplateInfo] = []
         for entity in folder.childEntity:
             if isinstance(entity, vim.VirtualMachine) and entity.config.template:
-                templates.append(TemplateInfo(name=entity.name, folder=template_folder_path))
-        templates.sort(key=lambda t: t.name, reverse=True)
+                cfg = entity.config
+                templates.append(TemplateInfo(
+                    name=entity.name,
+                    folder=template_folder_path,
+                    portal_version=self._extract_portal_version(cfg, entity.name),
+                    creation_date=self._extract_creation_date(cfg),
+                ))
+
+        # Prefer newest templates first. If date is missing, fallback to name ordering.
+        templates.sort(
+            key=lambda t: (
+                t.creation_date is not None,
+                t.creation_date or datetime.min.replace(tzinfo=timezone.utc),
+                t.name.lower(),
+            ),
+            reverse=True,
+        )
+        if limit > 0:
+            templates = templates[:limit]
         return templates
 
     # -- clone from template -----------------------------------------------

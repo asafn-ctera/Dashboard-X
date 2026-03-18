@@ -1,16 +1,16 @@
 :root {
-    --bg-primary: #1a1a2e;
-    --bg-secondary: #16213e;
-    --bg-card: #0f3460;
-    --bg-hover: #1a4a7a;
-    --accent: #e94560;
-    --accent-hover: #ff6b6b;
-    --text-primary: #eee;
-    --text-secondary: #aaa;
-    --success: #4ade80;
-    --error: #f87171;
-    --warning: #fbbf24;
-    --info: #60a5fa;
+    --bg-primary: #141820;
+    --bg-secondary: #1b2030;
+    --bg-card: #232940;
+    --bg-hover: #2d3450;
+    --accent: #505BE5;
+    --accent-hover: #6b75f0;
+    --text-primary: #c8cdd8;
+    --text-secondary: #6b7385;
+    --success: #66d4c8;
+    --error: #e06b6b;
+    --warning: #d98a2e;
+    --info: #8b94d0;
     --border: rgba(255, 255, 255, 0.06);
 }
 
@@ -48,6 +48,18 @@ header h1 {
     font-size: 1.6rem;
     font-weight: 600;
     letter-spacing: -0.02em;
+}
+
+.header-right {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.ctera-logo {
+    height: 32px;
+    width: auto;
+    opacity: 0.8;
 }
 
 .connection-status {
@@ -162,8 +174,8 @@ header h1 {
 .btn-small { padding: 5px 10px; font-size: 0.78rem; }
 .btn-full { width: 100%; }
 
-.btn-danger { background: #dc2626; color: white; }
-.btn-danger:hover { background: #ef4444; }
+.btn-danger { background: #c04040; color: #eee; }
+.btn-danger:hover { background: #d05555; }
 
 .btn:disabled {
     opacity: 0.5;
@@ -263,10 +275,10 @@ tbody tr {
 }
 
 tbody tr:last-child { border-bottom: none; }
-tbody tr:hover { background: rgba(233, 69, 96, 0.04); }
-tbody tr.row-provisioning { background: rgba(96, 165, 250, 0.04); }
+tbody tr:hover { background: rgba(80, 91, 229, 0.05); }
+tbody tr.row-provisioning { background: rgba(139, 148, 208, 0.05); }
 .vm-main-row { cursor: pointer; }
-.vm-main-row.expanded { background: rgba(96, 165, 250, 0.06); }
+.vm-main-row.expanded { background: rgba(139, 148, 208, 0.06); }
 .vm-actions-row td {
     background: rgba(15, 52, 96, 0.32);
     border-top: 1px solid var(--border);
@@ -284,7 +296,7 @@ tbody tr.row-provisioning { background: rgba(96, 165, 250, 0.04); }
     font-size: 0.75rem;
     text-transform: uppercase;
     letter-spacing: 0.6px;
-    color: var(--text-secondary);
+    color: #eef1f7;
     margin-bottom: 8px;
 }
 
@@ -306,22 +318,22 @@ td {
 }
 
 .vm-status.poweredOn {
-    background: rgba(74, 222, 128, 0.12);
+    background: rgba(102, 212, 200, 0.10);
     color: var(--success);
 }
 
 .vm-status.poweredOff {
-    background: rgba(248, 113, 113, 0.12);
+    background: rgba(224, 107, 107, 0.10);
     color: var(--error);
 }
 
 .vm-status.suspended {
-    background: rgba(251, 191, 36, 0.12);
+    background: rgba(217, 138, 46, 0.10);
     color: var(--warning);
 }
 
 .vm-status.provisioning {
-    background: rgba(96, 165, 250, 0.12);
+    background: rgba(139, 148, 208, 0.10);
     color: var(--info);
 }
 
@@ -369,7 +381,7 @@ td {
     padding: 2px 8px;
     border-radius: 4px;
     font-size: 0.75rem;
-    background: rgba(96, 165, 250, 0.1);
+    background: rgba(139, 148, 208, 0.08);
     color: var(--info);
     max-width: 200px;
     overflow: hidden;
@@ -464,8 +476,8 @@ td {
 }
 
 .error-banner {
-    background: rgba(248, 113, 113, 0.1);
-    border: 1px solid rgba(248, 113, 113, 0.3);
+    background: rgba(224, 107, 107, 0.08);
+    border: 1px solid rgba(224, 107, 107, 0.25);
     border-radius: 10px;
     padding: 14px 20px;
     margin-bottom: 20px;
@@ -498,7 +510,7 @@ td {
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.8px;
-    color: var(--text-secondary);
+    color: #eef1f7;
     margin-bottom: 18px;
 }
 
@@ -567,7 +579,7 @@ td {
     line-height: 1.5;
     margin-bottom: 16px;
     padding: 10px;
-    background: rgba(96, 165, 250, 0.06);
+    background: rgba(139, 148, 208, 0.06);
     border-radius: 6px;
     border-left: 3px solid var(--info);
 }
@@ -586,8 +598,8 @@ td {
 
 .suggestion-box {
     margin-top: 8px;
-    background: rgba(251, 191, 36, 0.08);
-    border: 1px solid rgba(251, 191, 36, 0.25);
+    background: rgba(217, 138, 46, 0.06);
+    border: 1px solid rgba(217, 138, 46, 0.20);
     border-left: 3px solid var(--warning);
     border-radius: 8px;
     padding: 12px;
@@ -815,14 +827,14 @@ td {
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.8px;
-    color: var(--text-secondary);
+    color: #eef1f7;
     margin: 0;
     flex: 1;
 }
 
 .jenkins-logo {
-    width: 22px;
-    height: 22px;
+    width: 48px;
+    height: 48px;
     opacity: 0.30;
     border-radius: 50%;
     object-fit: cover;
@@ -928,7 +940,7 @@ td {
 }
 
 .jenkins-job-remove:hover {
-    background: rgba(248, 113, 113, 0.15);
+    background: rgba(224, 107, 107, 0.12);
     color: var(--error);
 }
 
@@ -936,6 +948,156 @@ td {
     font-size: 0.82rem;
     color: var(--text-secondary);
     padding: 8px 0;
+}
+
+/* -- jenkins builds list ---------------------------------------------- */
+
+.jenkins-my-builds {
+    border-top: 1px solid var(--border);
+}
+
+.jenkins-builds-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.jenkins-builds-placeholder {
+    font-size: 0.82rem;
+    color: var(--text-secondary);
+    padding: 12px 0;
+}
+
+.jenkins-build-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 12px;
+    background: var(--bg-primary);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    transition: border-color 0.2s;
+}
+
+.jenkins-build-item:hover {
+    border-color: rgba(255, 255, 255, 0.12);
+}
+
+.build-bar {
+    width: 3px;
+    min-height: 28px;
+    align-self: stretch;
+    border-radius: 2px;
+    flex-shrink: 0;
+}
+
+.build-bar.success { background: var(--success); }
+.build-bar.failed { background: var(--error); }
+.build-bar.building { background: var(--info); animation: pulse 1.2s ease-in-out infinite; }
+.build-bar.unstable { background: var(--warning); }
+.build-bar.other { background: var(--text-secondary); }
+
+.build-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.build-main {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 2px;
+}
+
+.build-number {
+    font-weight: 600;
+    font-size: 0.84rem;
+    color: var(--info);
+    text-decoration: none;
+    flex-shrink: 0;
+}
+
+.build-number:hover {
+    text-decoration: underline;
+}
+
+.build-job-name {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.build-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.74rem;
+    color: var(--text-secondary);
+    flex-wrap: wrap;
+}
+
+.build-branch {
+    background: rgba(139, 148, 208, 0.08);
+    padding: 1px 6px;
+    border-radius: 4px;
+    color: var(--info);
+    font-size: 0.72rem;
+}
+
+.build-vms {
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    font-size: 0.72rem;
+}
+
+.build-duration {
+    opacity: 0.7;
+}
+
+.build-time {
+    opacity: 0.5;
+}
+
+.build-badge {
+    font-size: 0.7rem;
+    font-weight: 600;
+    padding: 3px 8px;
+    border-radius: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.build-badge.success {
+    background: rgba(102, 212, 200, 0.10);
+    color: var(--success);
+}
+
+.build-badge.failed {
+    background: rgba(224, 107, 107, 0.10);
+    color: var(--error);
+}
+
+.build-badge.building {
+    background: rgba(139, 148, 208, 0.10);
+    color: var(--info);
+    animation: pulse 1.2s ease-in-out infinite;
+}
+
+.build-badge.unstable {
+    background: rgba(217, 138, 46, 0.10);
+    color: var(--warning);
+}
+
+.build-badge.other {
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--text-secondary);
+}
+
+.jenkins-retry-btn {
+    flex-shrink: 0;
 }
 
 /* -- add jenkins job dialog ------------------------------------------- */
@@ -966,7 +1128,7 @@ td {
 }
 
 .jenkins-job-search-item:hover {
-    background: rgba(233, 69, 96, 0.04);
+    background: rgba(80, 91, 229, 0.05);
 }
 
 .jenkins-job-search-dot {
@@ -1086,6 +1248,67 @@ td {
     margin-top: 20px;
 }
 
+/* -- quick template buttons ------------------------------------------- */
+
+.quick-templates {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.quick-tpl-placeholder {
+    font-size: 0.82rem;
+    color: var(--text-secondary);
+    padding: 8px 0;
+}
+
+.quick-tpl-btn {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    width: 100%;
+    padding: 10px 14px;
+    background: var(--bg-primary);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text-primary);
+    text-align: left;
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.15s;
+}
+
+.quick-tpl-btn:hover {
+    border-color: var(--accent);
+    background: rgba(80, 91, 229, 0.06);
+}
+
+.quick-tpl-name {
+    font-size: 0.86rem;
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.quick-tpl-detail {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.74rem;
+    color: var(--text-secondary);
+}
+
+.quick-tpl-version {
+    background: rgba(139, 148, 208, 0.08);
+    padding: 1px 6px;
+    border-radius: 4px;
+    color: var(--info);
+}
+
+.quick-tpl-date {
+    opacity: 0.7;
+}
+
 /* -- clone VM dialog -------------------------------------------------- */
 
 .clone-dialog-box {
@@ -1118,6 +1341,19 @@ td {
     transition: background 0.15s, border-color 0.15s;
 }
 
+.clone-tpl-title {
+    display: block;
+    font-size: 0.88rem;
+    font-weight: 600;
+    margin-bottom: 2px;
+}
+
+.clone-tpl-meta {
+    display: block;
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+}
+
 .clone-tpl-item:hover {
     background: var(--bg-secondary);
     border-color: var(--accent);
@@ -1127,6 +1363,10 @@ td {
     border-color: var(--accent);
     background: var(--accent);
     color: #fff;
+}
+
+.clone-tpl-item.selected .clone-tpl-meta {
+    color: rgba(255, 255, 255, 0.88);
 }
 
 .clone-tpl-empty {
@@ -1144,6 +1384,13 @@ td {
 
 .clone-selected-tpl strong {
     color: var(--text-primary);
+}
+
+.clone-selected-meta {
+    color: var(--text-secondary);
+    font-size: 0.82rem;
+    margin-top: -8px;
+    margin-bottom: 12px;
 }
 
 /* -- add environment dialog ------------------------------------------- */
@@ -1202,7 +1449,7 @@ td {
 }
 
 .crumb.clickable:hover {
-    background: rgba(96, 165, 250, 0.1);
+    background: rgba(139, 148, 208, 0.08);
     text-decoration: underline;
 }
 
@@ -1257,7 +1504,7 @@ td {
 .browse-vm-count {
     font-size: 0.72rem;
     color: var(--text-secondary);
-    background: rgba(96, 165, 250, 0.1);
+    background: rgba(139, 148, 208, 0.08);
     padding: 2px 8px;
     border-radius: 10px;
     white-space: nowrap;

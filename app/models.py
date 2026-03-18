@@ -47,6 +47,8 @@ class LoginResponse(BaseModel):
 class TemplateInfo(BaseModel):
     name: str
     folder: str
+    portal_version: Optional[str] = None
+    creation_date: Optional[datetime] = None
 
 
 class SnapshotRequest(BaseModel):
@@ -109,6 +111,7 @@ class JenkinsBuildResponse(BaseModel):
 
 
 class JenkinsBuildInfo(BaseModel):
+    job_name: str = ""
     number: int
     status: str  # SUCCESS, FAILURE, BUILDING, ABORTED, UNSTABLE
     branch: str
@@ -116,6 +119,11 @@ class JenkinsBuildInfo(BaseModel):
     url: str
     timestamp: Optional[int] = None
     duration_s: Optional[int] = None
+
+
+class JenkinsRebuildRequest(BaseModel):
+    job_name: str
+    build_number: int
 
 
 class JenkinsJobRequest(BaseModel):

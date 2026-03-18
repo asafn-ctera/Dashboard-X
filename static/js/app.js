@@ -19,6 +19,9 @@ let expandedVmKey = null;
 let configuredFolderSet = new Set();
 let savedJenkinsJobs = [];
 let jenkinsJobSearchTimer = null;
+let jenkinsBuilds = [];
+let jenkinsBuildsTimer = null;
+const CLONE_TEMPLATE_LIMIT = 5;
 
 // -- init -------------------------------------------------------------
 
@@ -27,7 +30,7 @@ document.addEventListener('DOMContentLoaded', () => {
         loadVMs();
     });
     loadTemplates();
-    loadJenkinsJobs();
+    loadJenkinsJobs().then(() => loadJenkinsBuilds());
     startAutoRefresh();
 
     document.getElementById('search').addEventListener('input', (e) => {
@@ -176,6 +179,7 @@ async function submitLogin() {
         document.getElementById('login-password').value = '';
         await loadStatus();
         await loadVMs(true);
+        await loadTemplates();
     } catch (e) {
         status.className = 'action-status error';
         status.textContent = `Login failed: ${e.message}`;
@@ -187,12 +191,51 @@ async function submitLogin() {
 
 async function loadTemplates() {
     try {
-        const res = await fetch(`${API}/api/templates`);
+        const res = await fetch(`${API}/api/templates?limit=${CLONE_TEMPLATE_LIMIT}`);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         allTemplates = await res.json();
     } catch (e) {
         allTemplates = [];
     }
+    renderQuickTemplates();
+}
+
+function renderQuickTemplates() {
+    const container = document.getElementById('quick-templates');
+    const templates = allTemplates.slice(0, 5);
+
+    if (templates.length === 0) {
+        container.innerHTML = '<div class="quick-tpl-placeholder">No templates available.</div>';
+        return;
+    }
+
+    container.innerHTML = templates.map(t => {
+        const version = t.portal_version || '';
+        const date = t.creation_date ? formatDate(t.creation_date) : '';
+        return `<button class="quick-tpl-btn" onclick="quickCloneTemplate('${escAttr(t.name)}')" title="${esc(t.name)}">
+            <span class="quick-tpl-name">${esc(t.name)}</span>
+            <span class="quick-tpl-detail">
+                ${version ? `<span class="quick-tpl-version">${esc(version)}</span>` : ''}
+                ${date ? `<span class="quick-tpl-date">${esc(date)}</span>` : ''}
+            </span>
+        </button>`;
+    }).join('');
+}
+
+function quickCloneTemplate(name) {
+    selectedCloneTemplate = name;
+    const tpl = allTemplates.find(t => t.name === name);
+    document.getElementById('clone-step-1').style.display = 'none';
+    document.getElementById('clone-step-2').style.display = '';
+    document.getElementById('clone-back-btn').style.display = '';
+    document.getElementById('clone-next-btn').style.display = '';
+    document.getElementById('clone-selected-label').textContent = name;
+    document.getElementById('clone-selected-meta').textContent = tpl ? templateMetaLine(tpl) : '';
+    document.getElementById('clone-vm-name').value = '';
+    document.getElementById('clone-status').className = 'action-status';
+    document.getElementById('clone-status').textContent = '';
+    document.getElementById('clone-dialog').classList.add('active');
+    document.getElementById('clone-vm-name').focus();
 }
 
 function refreshVMs() {
@@ -203,7 +246,10 @@ function refreshVMs() {
 
 function startAutoRefresh() {
     stopAutoRefresh();
-    refreshTimer = setInterval(() => loadVMs(), 60000);
+    refreshTimer = setInterval(() => {
+        loadVMs();
+        loadJenkinsBuilds();
+    }, 60000);
 }
 
 function stopAutoRefresh() {
@@ -217,19 +263,26 @@ function stopAutoRefresh() {
 
 let selectedCloneTemplate = '';
 
-function openCloneDialog() {
+async function openCloneDialog() {
     selectedCloneTemplate = '';
     document.getElementById('clone-step-1').style.display = '';
     document.getElementById('clone-step-2').style.display = 'none';
     document.getElementById('clone-back-btn').style.display = 'none';
     document.getElementById('clone-next-btn').style.display = 'none';
-    document.getElementById('clone-template-search').value = '';
     document.getElementById('clone-vm-name').value = '';
+    document.getElementById('clone-selected-meta').textContent = '';
     document.getElementById('clone-status').className = 'action-status';
     document.getElementById('clone-status').textContent = '';
+    const list = document.getElementById('clone-template-list');
+    list.innerHTML = '<div class="clone-tpl-empty">Loading templates...</div>';
+
+    if (allTemplates.length === 0) {
+        await loadTemplates();
+    }
     renderCloneTemplateList(allTemplates);
     document.getElementById('clone-dialog').classList.add('active');
-    document.getElementById('clone-template-search').focus();
+    const firstTemplateBtn = document.querySelector('#clone-template-list .clone-tpl-item');
+    if (firstTemplateBtn) firstTemplateBtn.focus();
 }
 
 function closeCloneDialog() {
@@ -239,29 +292,26 @@ function closeCloneDialog() {
 function renderCloneTemplateList(templates) {
     const list = document.getElementById('clone-template-list');
     if (templates.length === 0) {
-        list.innerHTML = '<div class="clone-tpl-empty">No templates found</div>';
+        list.innerHTML = '<div class="clone-tpl-empty">No templates found in latest 5</div>';
         return;
     }
     list.innerHTML = templates.map(t =>
-        `<button class="clone-tpl-item${t.name === selectedCloneTemplate ? ' selected' : ''}" onclick="selectCloneTemplate('${esc(t.name)}')">${esc(t.name)}</button>`
+        `<button class="clone-tpl-item${t.name === selectedCloneTemplate ? ' selected' : ''}" onclick="selectCloneTemplate('${escAttr(t.name)}')">
+            <span class="clone-tpl-title">${esc(t.name)}</span>
+            <span class="clone-tpl-meta">${esc(templateMetaLine(t))}</span>
+        </button>`
     ).join('');
-}
-
-function filterCloneTemplates() {
-    const query = document.getElementById('clone-template-search').value.toLowerCase();
-    const filtered = query
-        ? allTemplates.filter(t => t.name.toLowerCase().includes(query))
-        : allTemplates;
-    renderCloneTemplateList(filtered);
 }
 
 function selectCloneTemplate(name) {
     selectedCloneTemplate = name;
+    const tpl = allTemplates.find(t => t.name === name);
     document.getElementById('clone-step-1').style.display = 'none';
     document.getElementById('clone-step-2').style.display = '';
     document.getElementById('clone-back-btn').style.display = '';
     document.getElementById('clone-next-btn').style.display = '';
     document.getElementById('clone-selected-label').textContent = name;
+    document.getElementById('clone-selected-meta').textContent = tpl ? templateMetaLine(tpl) : '';
     document.getElementById('clone-vm-name').focus();
 }
 
@@ -619,9 +669,9 @@ function showToast(message, type) {
     toast.style.cssText = `
         position: fixed; bottom: 24px; right: 24px; padding: 14px 22px;
         border-radius: 10px; font-size: 0.88rem; z-index: 200;
-        background: ${type === 'success' ? 'rgba(74,222,128,0.15)' : 'rgba(248,113,113,0.15)'};
-        color: ${type === 'success' ? '#4ade80' : '#f87171'};
-        border: 1px solid ${type === 'success' ? 'rgba(74,222,128,0.3)' : 'rgba(248,113,113,0.3)'};
+        background: ${type === 'success' ? 'rgba(102,212,200,0.12)' : 'rgba(224,107,107,0.12)'};
+        color: ${type === 'success' ? '#66d4c8' : '#e06b6b'};
+        border: 1px solid ${type === 'success' ? 'rgba(102,212,200,0.25)' : 'rgba(224,107,107,0.25)'};
         backdrop-filter: blur(12px); max-width: 400px;
         animation: fadeIn 0.2s ease-out;
     `;
@@ -1067,6 +1117,21 @@ function summarizeEnvNames(vms) {
     return `${preview} ... +${names.length - 6} more`;
 }
 
+function templateMetaLine(tpl) {
+    const parts = [];
+    if (tpl.portal_version) {
+        parts.push(`Version ${tpl.portal_version}`);
+    }
+    if (tpl.creation_date) {
+        parts.push(`Created ${formatDate(tpl.creation_date)}`);
+    }
+    if (tpl.folder) {
+        parts.push(shortFolderPath(tpl.folder));
+    }
+    if (parts.length === 0) return 'No additional metadata';
+    return parts.join(' · ');
+}
+
 async function deleteSuggestedEnvs() {
     if (currentSuggestionVMs.length === 0) return;
     const ok = window.confirm(`Delete ${currentSuggestionVMs.length} suggested environment(s)?`);
@@ -1392,6 +1457,138 @@ function closeJenkinsParamsDialog() {
     _activeJenkinsJobName = '';
 }
 
+// -- jenkins builds (your builds) -------------------------------------
+
+async function loadJenkinsBuilds() {
+    const container = document.getElementById('jenkins-builds-list');
+    if (savedJenkinsJobs.length === 0) {
+        jenkinsBuilds = [];
+        container.innerHTML = '<div class="jenkins-builds-placeholder">Add Jenkins jobs above to see your builds.</div>';
+        scheduleBuildPoll();
+        return;
+    }
+
+    try {
+        const promises = savedJenkinsJobs.map(job =>
+            fetch(`${API}/api/jenkins/builds?job_name=${encodeURIComponent(job)}&limit=10`)
+                .then(r => r.ok ? r.json() : [])
+                .catch(() => [])
+        );
+        const results = await Promise.all(promises);
+        jenkinsBuilds = results.flat()
+            .sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0))
+            .slice(0, 10);
+    } catch {
+        jenkinsBuilds = [];
+    }
+
+    renderJenkinsBuilds();
+    scheduleBuildPoll();
+}
+
+function scheduleBuildPoll() {
+    if (jenkinsBuildsTimer) {
+        clearTimeout(jenkinsBuildsTimer);
+        jenkinsBuildsTimer = null;
+    }
+    const hasBuilding = jenkinsBuilds.some(b => b.status === 'BUILDING');
+    if (hasBuilding) {
+        jenkinsBuildsTimer = setTimeout(() => loadJenkinsBuilds(), 15000);
+    }
+}
+
+function renderJenkinsBuilds() {
+    const container = document.getElementById('jenkins-builds-list');
+
+    if (jenkinsBuilds.length === 0) {
+        container.innerHTML = '<div class="jenkins-builds-placeholder">No recent builds found.</div>';
+        return;
+    }
+
+    container.innerHTML = jenkinsBuilds.map(build => {
+        const isBuilding = build.status === 'BUILDING';
+        const isFailed = build.status === 'FAILURE' || build.status === 'ABORTED';
+        const isSuccess = build.status === 'SUCCESS';
+        const isUnstable = build.status === 'UNSTABLE';
+
+        const statusCls = isBuilding ? 'building'
+            : isFailed ? 'failed'
+            : isSuccess ? 'success'
+            : isUnstable ? 'unstable'
+            : 'other';
+
+        const duration = build.duration_s
+            ? `${Math.floor(build.duration_s / 60)}m ${build.duration_s % 60}s`
+            : '';
+
+        const timeAgo = build.timestamp ? formatTimeAgo(build.timestamp) : '';
+
+        const jn = escAttr(build.job_name);
+        const retryBtn = isFailed
+            ? `<button class="btn btn-small btn-primary jenkins-retry-btn" onclick="event.stopPropagation(); retryJenkinsBuild('${jn}', ${build.number}, this)">Retry</button>`
+            : '';
+
+        const shortJob = build.job_name.length > 32
+            ? build.job_name.substring(0, 29) + '...'
+            : build.job_name;
+
+        return `<div class="jenkins-build-item">
+            <div class="build-bar ${statusCls}"></div>
+            <div class="build-info">
+                <div class="build-main">
+                    <a class="build-number" href="${esc(build.url)}" target="_blank" rel="noopener">#${build.number}</a>
+                    <span class="build-job-name" title="${esc(build.job_name)}">${esc(shortJob)}</span>
+                </div>
+                <div class="build-meta">
+                    ${build.branch ? `<span class="build-branch">${esc(build.branch)}</span>` : ''}
+                    ${build.vm_names ? `<span class="build-vms">${esc(build.vm_names)}</span>` : ''}
+                    ${duration ? `<span class="build-duration">${duration}</span>` : ''}
+                    ${timeAgo ? `<span class="build-time">${timeAgo}</span>` : ''}
+                </div>
+            </div>
+            <div class="build-badge ${statusCls}">${isBuilding ? 'In Progress' : esc(build.status)}</div>
+            ${retryBtn}
+        </div>`;
+    }).join('');
+}
+
+async function retryJenkinsBuild(jobName, buildNumber, btn) {
+    btn.disabled = true;
+    btn.textContent = 'Retrying...';
+
+    try {
+        const res = await fetch(`${API}/api/jenkins/rebuild`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ job_name: jobName, build_number: buildNumber }),
+        });
+        const data = await res.json();
+        showToast(data.message, data.success ? 'success' : 'error');
+        if (data.success) {
+            setTimeout(() => loadJenkinsBuilds(), 3000);
+        }
+    } catch (e) {
+        showToast(`Retry failed: ${e.message}`, 'error');
+    } finally {
+        btn.disabled = false;
+        btn.textContent = 'Retry';
+    }
+}
+
+function formatTimeAgo(timestamp) {
+    const diff = Date.now() - timestamp;
+    const minutes = Math.floor(diff / 60000);
+    const hours = Math.floor(diff / 3600000);
+    const days = Math.floor(diff / 86400000);
+
+    if (minutes < 1) return 'just now';
+    if (minutes < 60) return `${minutes}m ago`;
+    if (hours < 24) return `${hours}h ago`;
+    return `${days}d ago`;
+}
+
+// -- jenkins build dialog (parameterized) -----------------------------
+
 async function submitJenkinsBuild() {
     const submitBtn = document.getElementById('jenkins-params-submit');
     const status = document.getElementById('jenkins-params-status');
@@ -1427,6 +1624,7 @@ async function submitJenkinsBuild() {
             mainStatus.textContent = data.message;
             setTimeout(() => {
                 closeJenkinsParamsDialog();
+                loadJenkinsBuilds();
             }, 1500);
         }
     } catch (e) {

@@ -23,6 +23,7 @@ from app.models import (
     JenkinsBuildResponse,
     JenkinsJobInfo,
     JenkinsJobRequest,
+    JenkinsRebuildRequest,
     LoginRequest,
     LoginResponse,
     SnapshotRequest,
@@ -217,10 +218,12 @@ def search_vsphere_vms(
 
 
 @router.get("/templates", response_model=List[TemplateInfo])
-def list_templates() -> List[TemplateInfo]:
+def list_templates(
+    limit: int = Query(5, ge=1, le=50, description="Max templates to return"),
+) -> List[TemplateInfo]:
     assert _client is not None
     try:
-        return _client.list_templates()
+        return _client.list_templates(limit=limit)
     except Exception:
         return []
 
@@ -470,6 +473,7 @@ def trigger_jenkins_build(req: JenkinsBuildRequest) -> JenkinsBuildResponse:
 
 @router.get("/jenkins/builds", response_model=List[JenkinsBuildInfo])
 def list_jenkins_builds(
+    job_name: str = Query(_JENKINS_JOB, description="Jenkins job name"),
     limit: int = Query(10, description="Max builds to return"),
 ) -> List[JenkinsBuildInfo]:
     assert _client is not None
@@ -477,8 +481,9 @@ def list_jenkins_builds(
     if not cfg.user or not cfg.token:
         return []
 
+    safe_job = urllib.parse.quote(job_name, safe="")
     try:
-        job_data = _jenkins_api(cfg, f"/job/{_JENKINS_JOB}/api/json")
+        job_data = _jenkins_api(cfg, f"/job/{safe_job}/api/json")
     except Exception:
         logger.exception("Failed to fetch Jenkins job info")
         return []
@@ -499,7 +504,7 @@ def list_jenkins_builds(
         if not num:
             continue
         try:
-            b = _jenkins_api(cfg, f"/job/{_JENKINS_JOB}/{num}/api/json")
+            b = _jenkins_api(cfg, f"/job/{safe_job}/{num}/api/json")
         except Exception:
             continue
 
@@ -529,6 +534,7 @@ def list_jenkins_builds(
         duration = b.get("duration", 0)
 
         results.append(JenkinsBuildInfo(
+            job_name=job_name,
             number=num,
             status=status,
             branch=branch,
@@ -539,3 +545,49 @@ def list_jenkins_builds(
         ))
 
     return results
+
+
+@router.post("/jenkins/rebuild", response_model=JenkinsBuildResponse)
+def rebuild_jenkins_build(req: JenkinsRebuildRequest) -> JenkinsBuildResponse:
+    assert _client is not None
+    cfg = _client._config.jenkins
+    if not cfg.user or not cfg.token:
+        return JenkinsBuildResponse(
+            success=False,
+            message="Jenkins credentials not configured",
+        )
+
+    safe_job = urllib.parse.quote(req.job_name, safe="")
+
+    try:
+        build_data = _jenkins_api(cfg, f"/job/{safe_job}/{req.build_number}/api/json")
+    except Exception as e:
+        return JenkinsBuildResponse(
+            success=False,
+            message=f"Failed to fetch build #{req.build_number}: {e}",
+        )
+
+    params: Dict[str, str] = {}
+    for action in build_data.get("actions", []):
+        for param in action.get("parameters", []):
+            name = param.get("name", "")
+            value = param.get("value")
+            if name:
+                params[name] = str(value) if value is not None else ""
+
+    try:
+        if params:
+            query = urllib.parse.urlencode(params)
+            endpoint = f"/job/{safe_job}/buildWithParameters?{query}"
+        else:
+            endpoint = f"/job/{safe_job}/build"
+        _jenkins_api(cfg, endpoint, method="POST")
+        return JenkinsBuildResponse(
+            success=True,
+            message=f"Rebuild triggered for {req.job_name} (from #{req.build_number})",
+        )
+    except urllib.error.HTTPError as e:
+        return JenkinsBuildResponse(success=False, message=f"Jenkins error: HTTP {e.code}")
+    except Exception as e:
+        logger.exception("Jenkins rebuild failed")
+        return JenkinsBuildResponse(success=False, message=f"Failed to reach Jenkins: {e}")
